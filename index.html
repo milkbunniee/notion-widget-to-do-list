@@ -1,0 +1,1994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>✦ Notion Todo & Task Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <style>
+    /* ============================================================
+       CSS CUSTOM PROPERTIES – Light/Dark Base Themes
+       (These can be customized in the UI Settings Panel)
+     ============================================================ */
+    :root {
+      --bg-page:        transparent; /* Transparent page background for Notion compatibility */
+      --bg-widget:      #ffffff;
+      --bg-header:      #ffffff;
+      --bg-input:       #ffffff;
+      --bg-task:        #ffffff;
+      --bg-tab-active:  #F5C2D9;
+      --bg-tab:         #fdf5f8;
+
+      --border:         #F3A3C3;
+      --border-input:   #F5C2D9;
+      --border-task:    #F5C2D9;
+
+      --text-primary:   #3A3A3A;
+      --text-secondary: #777777;
+      --text-brand:     #F3A3C3;
+      --text-done:      #A0A0A0;
+
+      /* Priority Customizer properties */
+      --prio-high:      #e05a7a;
+      --prio-medium:    #e07a3c;
+      --prio-low:       #7abf7c;
+
+      /* D-Day Customizer properties */
+      --dday-overdue:   #e05a7a;
+      --dday-today:     #e07a3c;
+      --dday-soon:      #7abf7c;
+      --dday-future:    #777777;
+      
+      /* Constants */
+      --text-muted:     #b0b0b0;
+      --text-overdue:   #e05a7a;
+      --text-today:     #e07a3c;
+      --text-ok:        #7abf7c;
+      --heart-filled:   #E8598A;
+      --shadow:         0 4px 20px rgba(243,163,195,0.12);
+      --radius:         12px;
+      --radius-sm:      6px;
+      --radius-task:    8px;
+      --transition:     0.2s cubic-bezier(.4,0,.2,1);
+    }
+
+    /* ── Dark Mode overrides ── */
+    .dark {
+      --bg-widget:      #2A1826;
+      --bg-header:      #2A1826;
+      --bg-input:       #3A2234;
+      --bg-task:        #3A2234;
+      --bg-tab-active:  #B54D7A;
+      --bg-tab:         #3C2536;
+
+      --border:         #B54D7A;
+      --border-input:   #6A324E;
+      --border-task:    #6A324E;
+
+      --text-primary:   #F5E6EE;
+      --text-secondary: #C8A4B8;
+      --text-brand:     #F3A3C3;
+      --text-done:      #6E4A5E;
+    }
+
+    /* ============================================================
+       RESET & BASE
+     ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      min-height: 100%;
+      background: var(--bg-page);
+      font-family: 'Nunito', 'Inter', system-ui, sans-serif;
+      color: var(--text-primary);
+      transition: background var(--transition), color var(--transition);
+      overflow-x: hidden;
+    }
+
+    button { cursor: pointer; border: none; background: none; font-family: inherit; }
+    input, textarea, select {
+      font-family: inherit;
+      outline: none;
+      border: none;
+    }
+
+    /* ============================================================
+       WIDGET SHELL (Scaling & Responsive wrapper)
+     ============================================================ */
+    #widget-root {
+      transform-origin: top center;
+      transition: transform var(--transition);
+      display: flex;
+      justify-content: center;
+      padding: 12px;
+      min-height: 100vh;
+    }
+
+    /* Scale sizes mapping */
+    #widget-root.scale-small { transform: scale(0.85); width: 117%; }
+    #widget-root.scale-medium { transform: scale(1.0); width: 100%; }
+    #widget-root.scale-large { transform: scale(1.15); width: 87%; }
+
+    .widget {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-widget);
+      border-radius: var(--radius);
+      border: 1.8px solid var(--border);
+      box-shadow: 0 0 0 4px var(--bg-widget), 0 0 0 6px var(--border), var(--shadow);
+      margin: 12px auto;
+      transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
+      overflow: hidden;
+      height: fit-content;
+      min-height: 520px;
+    }
+
+    /* ============================================================
+       HEADER (Window Frame Style)
+     ============================================================ */
+    .widget-header {
+      background: var(--bg-header);
+      padding: 14px 16px 12px;
+      border-bottom: 1.8px solid var(--border);
+      transition: background var(--transition), border-color var(--transition);
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text-brand);
+      letter-spacing: 0.03em;
+      text-transform: lowercase;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .icon-btn {
+      width: 24px; height: 24px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 5px;
+      background: transparent;
+      border: 1.2px solid var(--border);
+      color: var(--text-brand);
+      font-size: 12px;
+      transition: background var(--transition), color var(--transition), transform .12s;
+    }
+    .icon-btn:hover { background: var(--bg-tab-active); color: #fff; transform: scale(1.08); }
+
+    /* Quick-add row */
+    .quick-add-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .quick-add-input {
+      flex: 1;
+      background: var(--bg-input);
+      border: 1.2px solid var(--border-input);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 13.5px;
+      color: var(--text-primary);
+      transition: border-color var(--transition), background var(--transition);
+    }
+    .quick-add-input::placeholder {
+      color: var(--text-muted);
+      font-style: italic;
+      font-weight: 300;
+    }
+    .quick-add-input:focus { border-color: var(--heart-filled); }
+
+    .add-btn {
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg-tab);
+      border: 1.2px solid var(--border-input);
+      color: var(--text-brand);
+      border-radius: 6px;
+      font-size: 20px;
+      font-weight: 700;
+      transition: background var(--transition), color var(--transition), transform .12s;
+    }
+    .add-btn:hover { background: var(--bg-tab-active); color: #fff; transform: scale(1.08); border-color: var(--bg-tab-active); }
+
+    /* ============================================================
+       TABS (Card replica layout - rectangular centered guides)
+     ============================================================ */
+    .tabs-wrap {
+      padding: 8px 12px;
+      background: var(--bg-tab);
+      border-bottom: 1.8px solid var(--border);
+    }
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .tab-btn {
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+      padding: 8px 4px;
+      background: var(--bg-widget);
+      color: var(--text-secondary);
+      border: 1.2px solid var(--border-input);
+      border-radius: 6px;
+      transition: all var(--transition);
+      cursor: pointer;
+    }
+    .tab-btn:hover {
+      border-color: var(--text-brand);
+      color: var(--text-brand);
+    }
+    .tab-btn.active {
+      background: var(--bg-tab-active);
+      color: #ffffff;
+      border-color: var(--bg-tab-active);
+      box-shadow: 0 2px 6px rgba(243,163,195,0.25);
+    }
+
+    /* ============================================================
+       TASK LIST CONTAINER
+     ============================================================ */
+    .task-list-wrap {
+      padding: 12px 14px;
+      flex: 1;
+      overflow-y: auto;
+      min-height: 360px;
+    }
+
+    .task-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* Horizontal grid layout */
+    .task-list.layout-horizontal {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .task-list.layout-horizontal .task-card {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+    }
+    .task-list.layout-horizontal .task-card .task-actions {
+      justify-content: flex-end;
+      border-top: 1px dashed var(--border-input);
+      padding-top: 8px;
+      margin-top: 4px;
+    }
+
+    /* ============================================================
+       TASK CARD & COMPONENT STYLING
+     ============================================================ */
+    .task-card {
+      background: var(--bg-task);
+      border: 1.5px solid var(--border-task);
+      border-radius: var(--radius-task);
+      padding: 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      transition: background var(--transition), border-color var(--transition), opacity .2s;
+      position: relative;
+      animation: slideIn .2s ease;
+    }
+    .task-card:hover { border-color: var(--text-brand); }
+    
+    /* Finished main tasks styling */
+    .task-card.done {
+      background: var(--bg-tab);
+    }
+    .task-card.done .task-title {
+      text-decoration: line-through;
+      color: var(--text-done);
+      opacity: 0.7;
+    }
+    .task-card.done .d-day-badge {
+      opacity: 0.4;
+      text-decoration: none;
+    }
+
+    /* Left heart complete checkbox icon */
+    .task-heart-checkbox {
+      width: 22px; height: 22px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: transform .12s;
+      color: var(--border-input);
+    }
+    .task-heart-checkbox:hover { transform: scale(1.18); color: var(--heart-filled); }
+    .task-heart-checkbox svg {
+      width: 18px; height: 18px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.2;
+      transition: fill 0.15s, stroke 0.15s, color 0.15s;
+    }
+    .task-heart-checkbox.checked {
+      color: var(--heart-filled);
+    }
+    .task-heart-checkbox.checked svg {
+      fill: var(--heart-filled);
+      stroke: var(--heart-filled);
+    }
+
+    /* Task content area */
+    .task-main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .task-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.4;
+      word-break: break-word;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .task-desc {
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    /* Subitems tree layout */
+    .subitems-container {
+      margin-top: 8px;
+      padding-left: 6px;
+      border-left: 1.5px dotted var(--border-input);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .subitem-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Subitem Checkbox icon (▢ or ☑ rounded-corner style) */
+    .subitem-check {
+      width: 16px; height: 16px;
+      border: 1.2px solid var(--border-input);
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      background: var(--bg-widget);
+      transition: all 0.1s;
+      flex-shrink: 0;
+    }
+    .subitem-check:hover { border-color: var(--heart-filled); }
+    .subitem-check.checked {
+      background: var(--bg-tab-active);
+      border-color: var(--bg-tab-active);
+    }
+    .subitem-check svg {
+      width: 10px; height: 10px;
+      stroke: #ffffff; stroke-width: 3.5;
+      fill: none;
+      opacity: 0;
+    }
+    .subitem-check.checked svg { opacity: 1; }
+
+    .subitem-text {
+      font-size: 12px;
+      color: var(--text-secondary);
+      transition: text-decoration .15s, color .15s;
+    }
+    .subitem-text.done {
+      text-decoration: line-through;
+      color: var(--text-done);
+      opacity: 0.7;
+    }
+
+    /* Metadata details */
+    .task-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-top: 6px;
+      flex-wrap: wrap;
+      font-family: 'Share Tech Mono', monospace;
+    }
+
+    /* D-Day badge styled inline next to task title */
+    .d-day-badge {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 1px 5px;
+      border-radius: 4px;
+      display: inline-block;
+      vertical-align: middle;
+      text-transform: uppercase;
+      background: transparent;
+      border: 1px solid currentColor;
+    }
+    .d-day-badge.overdue { color: var(--dday-overdue); }
+    .d-day-badge.today   { color: var(--dday-today); }
+    .d-day-badge.soon    { color: var(--dday-soon); }
+    .d-day-badge.future  { color: var(--dday-future); }
+
+    /* Priority hashtags color coding - Rendered as LAST item in card metadata */
+    .priority-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: transparent;
+      border: 1px solid currentColor;
+    }
+    .priority-badge.p-high { color: var(--prio-high); }
+    .priority-badge.p-medium { color: var(--prio-medium); }
+    .priority-badge.p-low { color: var(--prio-low); }
+
+    /* Card Actions column (Right side) */
+    .task-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+      align-self: center;
+    }
+
+    .postpone-btn {
+      font-size: 16px;
+      color: var(--text-brand);
+      cursor: pointer;
+      transition: color 0.15s, transform 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px; height: 22px;
+    }
+    .postpone-btn:hover {
+      color: var(--heart-filled);
+      transform: translateX(3px);
+    }
+
+    .action-close-btn {
+      width: 22px; height: 22px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 4px;
+      border: 1.2px solid var(--border-input);
+      font-size: 12px;
+      color: var(--text-muted);
+      transition: all var(--transition);
+    }
+    .action-close-btn:hover { border-color: var(--text-overdue); color: var(--text-overdue); background: rgba(224,90,122,0.05); }
+
+    /* Empty states */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+      font-size: 12.5px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .empty-state svg { opacity: 0.5; width: 44px; height: 44px; stroke: var(--text-brand); }
+
+    /* ============================================================
+       ALL TAB SPECIAL SECTIONS (Renamed from History)
+     ============================================================ */
+    .all-section-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--text-brand);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 14px 0 8px 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .all-section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      border-bottom: 1.2px dashed var(--border-input);
+    }
+
+    /* ============================================================
+       FOOTER
+     ============================================================ */
+    .widget-footer {
+      padding: 12px 16px;
+      border-top: 1.8px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background: var(--bg-widget);
+    }
+
+    .footer-brand {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      color: var(--text-brand);
+      text-transform: uppercase;
+      opacity: 0.8;
+    }
+
+    .footer-refresh-btn {
+      position: absolute;
+      right: 16px;
+      color: var(--text-brand);
+      opacity: 0.7;
+      transition: opacity 0.15s, transform 0.15s;
+      cursor: pointer;
+    }
+    .footer-refresh-btn:hover {
+      opacity: 1;
+      transform: rotate(60deg);
+    }
+
+    /* ============================================================
+       MODAL BASE STYLING
+     ============================================================ */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.15);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      backdrop-filter: blur(2px);
+      animation: fadeIn .15s ease;
+    }
+    .modal-overlay.open { display: flex; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .modal {
+      background: var(--bg-widget);
+      border-radius: var(--radius);
+      padding: 20px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 10px 30px rgba(243,163,195,0.25);
+      border: 1.8px solid var(--border);
+      animation: popIn .2s cubic-bezier(.4,0,.2,1);
+      transition: background var(--transition), border-color var(--transition);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.96) translateY(8px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .modal-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text-brand);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-group { margin-bottom: 12px; }
+
+    .form-label {
+      display: block;
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .form-input, .form-textarea, .form-select {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1.2px solid var(--border-input);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 13px;
+      color: var(--text-primary);
+      transition: border-color var(--transition), background var(--transition);
+    }
+    .form-input:focus, .form-textarea:focus, .form-select:focus { border-color: var(--heart-filled); }
+    .form-textarea { resize: vertical; min-height: 50px; line-height: 1.4; }
+
+    /* Subitems list inside Task Editor Modal */
+    .subitem-list-modal {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .subitem-row-modal {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .subitem-input-modal {
+      flex: 1;
+      background: var(--bg-input);
+      border: 1.2px solid var(--border-input);
+      border-radius: 4px;
+      padding: 6px 8px;
+      font-size: 12px;
+      color: var(--text-primary);
+    }
+    .subitem-input-modal:focus { border-color: var(--heart-filled); }
+
+    .subitem-del-modal {
+      width: 24px; height: 24px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted);
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    .subitem-del-modal:hover { color: var(--text-overdue); }
+
+    .add-subitem-btn {
+      font-size: 11px;
+      color: var(--text-brand);
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 0;
+    }
+    .add-subitem-btn:hover { opacity: 0.8; }
+
+    /* Modal footer actions */
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .btn-primary {
+      flex: 1;
+      padding: 10px;
+      background: var(--bg-tab-active);
+      color: #fff;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 800;
+      transition: background var(--transition), transform .1s;
+    }
+    .btn-primary:hover { background: var(--heart-filled); transform: translateY(-1px); }
+
+    .btn-ghost {
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      background: transparent;
+      border: 1.2px solid var(--border-input);
+      transition: all var(--transition);
+    }
+    .btn-ghost:hover { border-color: var(--text-primary); color: var(--text-primary); }
+
+    /* ============================================================
+       SETTINGS & HEX CUSTOMIZER PANEL (Drawer/Modal overlay)
+     ============================================================ */
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .color-picker-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .color-picker-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .color-input-preview {
+      width: 28px;
+      height: 28px;
+      border: 1.2px solid var(--border-input);
+      border-radius: 4px;
+      padding: 0;
+      cursor: pointer;
+      background: none;
+    }
+  </style>
+</head>
+<body>
+
+<div id="widget-root" class="scale-medium">
+  <div class="widget" id="main-widget">
+
+    <!-- ── HEADER ── -->
+    <div class="widget-header">
+      <div class="header-top">
+        <div class="header-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+          </svg>
+          <span id="label-app-title">to do list</span>
+        </div>
+        <div class="header-controls">
+          <!-- Language Selector Switch -->
+          <button class="icon-btn" id="lang-toggle" title="Switch language (EN / PT-BR)" style="font-weight:800; font-size:10px;">
+            EN
+          </button>
+          <!-- Dark Mode Switch -->
+          <button class="icon-btn" id="dark-toggle" title="Toggle Dark Mode">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </button>
+          <!-- Customizer Panel Gear Icon -->
+          <button class="icon-btn" id="settings-open-btn" title="Widget Settings">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Task Input -->
+      <div class="quick-add-row">
+        <input type="text" class="quick-add-input" id="quick-add-input" placeholder="Add a task..." maxlength="120" />
+        <button class="add-btn" id="quick-add-btn" title="Add">＋</button>
+      </div>
+    </div>
+
+    <!-- ── SYSTEM TABS (Fiel à foto - Rectangular grid) ── -->
+    <div class="tabs-wrap">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="today" id="tab-label-today">Today</button>
+        <button class="tab-btn" data-tab="weekly" id="tab-label-weekly">Weekly</button>
+        <button class="tab-btn" data-tab="monthly" id="tab-label-monthly">Monthly</button>
+        <button class="tab-btn" data-tab="all" id="tab-label-all">All</button>
+      </div>
+    </div>
+
+    <!-- ── TASK CONTAINER ── -->
+    <div class="task-list-wrap">
+      <div class="task-list" id="task-list">
+        <!-- Rendered dynamically via javascript -->
+      </div>
+    </div>
+
+    <!-- ── FOOTER ── -->
+    <div class="widget-footer">
+      <span class="footer-brand">SOMLUTION</span>
+      <button class="footer-refresh-btn" id="footer-reset-btn" title="Reset sample tasks">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     ADD / EDIT TASK MODAL
+============================================================ -->
+<div class="modal-overlay" id="task-modal">
+  <div class="modal">
+    <div class="modal-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+      <span id="modal-title-text">New Task</span>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="field-title" id="lbl-title">Title *</label>
+      <input type="text" class="form-input" id="field-title" placeholder="Finish homework..." maxlength="120" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="field-desc" id="lbl-desc">Description</label>
+      <textarea class="form-textarea" id="field-desc" placeholder="Details..."></textarea>
+    </div>
+
+    <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+      <div>
+        <label class="form-label" for="field-date" id="lbl-deadline">Deadline</label>
+        <input type="date" class="form-input" id="field-date" />
+      </div>
+      <div>
+        <label class="form-label" for="field-priority" id="lbl-priority">Priority</label>
+        <select class="form-select" id="field-priority">
+          <option value="">None</option>
+          <option value="high">#high</option>
+          <option value="medium">#medium</option>
+          <option value="low">#low</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" id="lbl-subitems">Subitems</label>
+      <div class="subitem-list-modal" id="subitem-list-modal"></div>
+      <button class="add-subitem-btn" id="add-subitem-btn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span id="lbl-add-subitem">Add subitem</span>
+      </button>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-ghost" id="modal-cancel">Cancel</button>
+      <button class="btn-primary" id="modal-save">Save Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SETTINGS & HEX CUSTOMIZER MODAL
+============================================================ -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal" style="max-width: 420px;">
+    <div class="modal-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+      <span id="modal-settings-title">Widget Settings</span>
+    </div>
+
+    <!-- HEX Colors Edit Area -->
+    <div class="form-group">
+      <label class="form-label" style="margin-bottom: 10px; border-bottom: 1px dashed var(--border-input); padding-bottom: 4px;" id="lbl-theme-colors">Theme Customization (HEX)</label>
+      <div class="settings-grid">
+        <div class="color-picker-group">
+          <label class="form-label" style="font-size:9px;" id="lbl-col-bg">Widget Background</label>
+          <div class="color-picker-row">
+            <input type="color" class="color-input-preview" id="picker-bg" />
+            <input type="text" class="form-input" id="hex-bg" style="padding: 4px 6px; font-size:11px;" placeholder="#ffffff" />
+          </div>
+        </div>
+        <div class="color-picker-group">
+          <label class="form-label" style="font-size:9px;" id="lbl-col-text">Text Color</label>
+          <div class="color-picker-row">
+            <input type="color" class="color-input-preview" id="picker-text" />
+            <input type="text" class="form-input" id="hex-text" style="padding: 4px 6px; font-size:11px;" placeholder="#3A3A3A" />
+          </div>
+        </div>
+        <div class="color-picker-group">
+          <label class="form-label" style="font-size:9px;" id="lbl-col-icons">Icon / Accent Color</label>
+          <div class="color-picker-row">
+            <input type="color" class="color-input-preview" id="picker-icons" />
+            <input type="text" class="form-input" id="hex-icons" style="padding: 4px 6px; font-size:11px;" placeholder="#F3A3C3" />
+          </div>
+        </div>
+        <div class="color-picker-group">
+          <label class="form-label" style="font-size:9px;" id="lbl-col-cards">Card Color</label>
+          <div class="color-picker-row">
+            <input type="color" class="color-input-preview" id="picker-cards" />
+            <input type="text" class="form-input" id="hex-cards" style="padding: 4px 6px; font-size:11px;" placeholder="#ffffff" />
+          </div>
+        </div>
+        <div class="color-picker-group">
+          <label class="form-label" style="font-size:9px;" id="lbl-col-tab-active">Active Tab</label>
+          <div class="color-picker-row">
+            <input type="color" class="color-input-preview" id="picker-tab-active" />
+            <input type="text" class="form-input" id="hex-tab-active" style="padding: 4px 6px; font-size:11px;" placeholder="#F5C2D9" />
+          </div>
+        </div>
+        <div class="color-picker-group">
+          <label class="form-label" style="font-size:9px;" id="lbl-col-tab-inactive">Inactive Tab</label>
+          <div class="color-picker-row">
+            <input type="color" class="color-input-preview" id="picker-tab-inactive" />
+            <input type="text" class="form-input" id="hex-tab-inactive" style="padding: 4px 6px; font-size:11px;" placeholder="#fdf5f8" />
+          </div>
+        </div>
+        <div class="color-picker-group" style="grid-column: span 2;">
+          <label class="form-label" style="font-size:9px;" id="lbl-col-done">Strikethrough / Done Text</label>
+          <div class="color-picker-row">
+            <input type="color" class="color-input-preview" id="picker-done" />
+            <input type="text" class="form-input" id="hex-done" style="padding: 4px 6px; font-size:11px;" placeholder="#A0A0A0" />
+          </div>
+        </div>
+
+        <!-- Priority Custom Colors -->
+        <div class="color-picker-group" style="grid-column: span 2; margin-top: 6px; border-top: 1px dashed var(--border-input); padding-top: 8px;">
+          <label class="form-label" style="font-size:10px;" id="lbl-priority-colors">Priority Tag Colors (HEX)</label>
+        </div>
+        <div class="color-picker-group">
+          <label class="form-label" style="font-size:9px;">#high</label>
+          <div class="color-picker-row">
+            <input type="color" class="color-input-preview" id="picker-prio-high" />
+            <input type="text" class="form-input" id="hex-prio-high" style="padding: 4px 6px; font-size:11px;" placeholder="#e05a7a" />
+          </div>
+        </div>
+        <div class="color-picker-group">
+          <label class="form-label" style="font-size:9px;">#medium</label>
+          <div class="color-picker-row">
+            <input type="color" class="color-input-preview" id="picker-prio-med" />
+            <input type="text" class="form-input" id="hex-prio-med" style="padding: 4px 6px; font-size:11px;" placeholder="#e07a3c" />
+          </div>
+        </div>
+        <div class="color-picker-group" style="grid-column: span 2;">
+          <label class="form-label" style="font-size:9px;">#low</label>
+          <div class="color-picker-row">
+            <input type="color" class="color-input-preview" id="picker-prio-low" />
+            <input type="text" class="form-input" id="hex-prio-low" style="padding: 4px 6px; font-size:11px;" placeholder="#7abf7c" />
+          </div>
+        </div>
+
+        <!-- D-Day Custom Colors -->
+        <div class="color-picker-group" style="grid-column: span 2; margin-top: 6px; border-top: 1px dashed var(--border-input); padding-top: 8px;">
+          <label class="form-label" style="font-size:10px;" id="lbl-dday-colors">D-Day Tag Colors (HEX)</label>
+        </div>
+        <div class="color-picker-group">
+          <label class="form-label" style="font-size:9px;" id="lbl-dday-overdue">Overdue</label>
+          <div class="color-picker-row">
+            <input type="color" class="color-input-preview" id="picker-dday-overdue" />
+            <input type="text" class="form-input" id="hex-dday-overdue" style="padding: 4px 6px; font-size:11px;" placeholder="#e05a7a" />
+          </div>
+        </div>
+        <div class="color-picker-group">
+          <label class="form-label" style="font-size:9px;" id="lbl-dday-today">Today</label>
+          <div class="color-picker-row">
+            <input type="color" class="color-input-preview" id="picker-dday-today" />
+            <input type="text" class="form-input" id="hex-dday-today" style="padding: 4px 6px; font-size:11px;" placeholder="#e07a3c" />
+          </div>
+        </div>
+        <div class="color-picker-group">
+          <label class="form-label" style="font-size:9px;" id="lbl-dday-soon">Soon (<= 7 days)</label>
+          <div class="color-picker-row">
+            <input type="color" class="color-input-preview" id="picker-dday-soon" />
+            <input type="text" class="form-input" id="hex-dday-soon" style="padding: 4px 6px; font-size:11px;" placeholder="#7abf7c" />
+          </div>
+        </div>
+        <div class="color-picker-group">
+          <label class="form-label" style="font-size:9px;" id="lbl-dday-future">Future (> 7 days)</label>
+          <div class="color-picker-row">
+            <input type="color" class="color-input-preview" id="picker-dday-future" />
+            <input type="text" class="form-input" id="hex-dday-future" style="padding: 4px 6px; font-size:11px;" placeholder="#777777" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- UI scaling and layouts -->
+    <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px;">
+      <div>
+        <label class="form-label" for="setting-scale" id="lbl-scale">Scale Size</label>
+        <select class="form-select" id="setting-scale">
+          <option value="small" id="opt-scale-small">Small (85%)</option>
+          <option value="medium" id="opt-scale-medium">Medium (100%)</option>
+          <option value="large" id="opt-scale-large">Large (115%)</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label" for="setting-layout" id="lbl-layout">Layout Mode</label>
+        <select class="form-select" id="setting-layout">
+          <option value="vertical" id="opt-lay-vert">Vertical List</option>
+          <option value="horizontal" id="opt-lay-horiz">Horizontal Cards</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-ghost" id="settings-reset-defaults" style="font-size:11px; flex: 1;">Reset Defaults</button>
+      <button class="btn-primary" id="settings-save-btn" style="flex: 1;">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ============================================================
+     JAVASCRIPT LOGIC
+ ============================================================ -->
+<script>
+// SVG elements mapping
+const checkSVG = `<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+const heartSVG = `
+<svg class="heart-svg" viewBox="0 0 24 24">
+  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+</svg>`;
+
+const uid = () => '_' + Math.random().toString(36).slice(2, 9);
+const STORAGE_DATA_KEY = 'notion_todo_widget_tasks_v3';
+const STORAGE_CONFIG_KEY = 'notion_todo_widget_config_v3';
+
+// ── TRANSLATION MAPS ──
+const i18n = {
+  en: {
+    appTitle: "to do list",
+    tabToday: "Today",
+    tabWeekly: "Weekly",
+    tabMonthly: "Monthly",
+    tabAll: "All",
+    placeholderQuickAdd: "Add a task...",
+    lblTitle: "Title *",
+    lblDesc: "Description",
+    lblDeadline: "Deadline",
+    lblPriority: "Priority",
+    lblSubitems: "Subitems",
+    lblAddSubitem: "Add subitem",
+    btnCancel: "Cancel",
+    btnSave: "Save Task",
+    lblThemeColors: "Theme Customization (HEX)",
+    lblColBg: "Widget Background",
+    lblColText: "Text Color",
+    lblColIcons: "Icon / Accent Color",
+    lblColCards: "Card Color",
+    lblColTabActive: "Active Tab",
+    lblColTabInactive: "Inactive Tab",
+    lblColDone: "Strikethrough / Done Text",
+    lblScale: "Scale Size",
+    lblLayout: "Layout Mode",
+    optScaleSmall: "Small (85%)",
+    optScaleMedium: "Medium (100%)",
+    optScaleLarge: "Large (115%)",
+    optLayVert: "Vertical List",
+    optLayHoriz: "Horizontal Cards",
+    btnResetDefaults: "Reset Defaults",
+    btnSaveSettings: "Save Settings",
+    badgeNoDate: "No Deadline",
+    historyCompleted: "Completed Tasks",
+    historyPending: "Pending / Overdue Tasks",
+    taskNew: "New Task",
+    taskEdit: "Edit Task",
+    toastSaved: "Task saved successfully",
+    toastDeleted: "Task deleted",
+    toastPostponed: "Postponed to tomorrow",
+    toastReloaded: "Tasks reloaded",
+    toastCleared: "Cleared completed tasks",
+    toastNoCompleted: "No completed tasks to clear",
+    toastDefaultsReset: "Settings reset to defaults",
+    confirmReset: "Reset all tasks to defaults? This will erase custom entries.",
+    placeholderSubitem: "Subitem...",
+    lblPriorityColors: "Priority Tag Colors (HEX)",
+    lblDdayColors: "D-Day Tag Colors (HEX)",
+    lblDdayOverdue: "Overdue",
+    lblDdayToday: "Today",
+    lblDdaySoon: "Soon (<= 7 days)",
+    lblDdayFuture: "Future (> 7 days)"
+  },
+  pt: {
+    appTitle: "lista de tarefas",
+    tabToday: "Hoje",
+    tabWeekly: "Semanal",
+    tabMonthly: "Mensal",
+    tabAll: "Todos",
+    placeholderQuickAdd: "Adicionar uma tarefa...",
+    lblTitle: "Título *",
+    lblDesc: "Descrição",
+    lblDeadline: "Prazo",
+    lblPriority: "Prioridade",
+    lblSubitems: "Subitens",
+    lblAddSubitem: "Adicionar subitem",
+    btnCancel: "Cancelar",
+    btnSave: "Salvar Tarefa",
+    lblThemeColors: "Customização de Cores (HEX)",
+    lblColBg: "Fundo do Widget",
+    lblColText: "Cor do Texto",
+    lblColIcons: "Cor dos Ícones / Detalhes",
+    lblColCards: "Cor dos Cartões",
+    lblColTabActive: "Aba Ativa",
+    lblColTabInactive: "Aba Inativa",
+    lblColDone: "Texto Riscado / Concluído",
+    lblScale: "Tamanho do Widget",
+    lblLayout: "Modo de Layout",
+    optScaleSmall: "Pequeno (85%)",
+    optScaleMedium: "Médio (100%)",
+    optScaleLarge: "Grande (115%)",
+    optLayVert: "Lista Vertical",
+    optLayHoriz: "Colunas Horizontais",
+    btnResetDefaults: "Resetar Padrões",
+    btnSaveSettings: "Salvar Configurações",
+    badgeNoDate: "Sem Prazo",
+    historyCompleted: "Tarefas Concluídas",
+    historyPending: "Tarefas Pendentes / Atrasadas",
+    taskNew: "Nova Tarefa",
+    taskEdit: "Editar Tarefa",
+    toastSaved: "Tarefa salva com sucesso",
+    toastDeleted: "Tarefa excluída",
+    toastPostponed: "Adiada para amanhã",
+    toastReloaded: "Tarefas atualizadas",
+    toastCleared: "Limpou tarefas concluídas",
+    toastNoCompleted: "Nenhuma tarefa concluída para limpar",
+    toastDefaultsReset: "Cores resetadas para o padrão",
+    confirmReset: "Deseja resetar todas as tarefas? Seus dados personalizados serão limpos.",
+    placeholderSubitem: "Subitem...",
+    lblPriorityColors: "Cores das Tags de Prioridade (HEX)",
+    lblDdayColors: "Cores das Tags D-Day (HEX)",
+    lblDdayOverdue: "Atrasado",
+    lblDdayToday: "Hoje",
+    lblDdaySoon: "Próximo (<= 7 dias)",
+    lblDdayFuture: "Futuro (> 7 dias)"
+  }
+};
+
+// Default Tasks generator
+function getSampleTasks() {
+  const today = new Date();
+  const fmt = (d) => d.toISOString().slice(0, 10);
+  const addDays = (n) => { const d = new Date(today); d.setDate(d.getDate() + n); return d; };
+  return [
+    { id: uid(), title: '저녁 가볍게 먹기 #high', desc: 'Light dinner diet plan', deadline: fmt(today), done: false, liked: true, subitems: [] },
+    { id: uid(), title: 'adhd DB 끝 #high', desc: 'Finalize core configuration database tables', deadline: fmt(today), done: false, liked: true, subitems: [] },
+    { id: uid(), title: 'adhd 위젯 끝', desc: 'Create exact visual copy of Notion tabbed widget', deadline: fmt(addDays(1)), done: false, liked: true, subitems: [
+      { id: uid(), text: 'CSS theme properties', done: true },
+      { id: uid(), text: 'Localization i18n support', done: true },
+      { id: uid(), text: 'Subtask auto check trigger', done: false }
+    ] },
+    { id: uid(), title: 'pt 가기 #medium', desc: 'Gym training session', deadline: fmt(addDays(2)), done: false, liked: false, subitems: [] },
+    { id: uid(), title: '점심 샐러드 #low', desc: 'Healthy diet nutrition plan', deadline: fmt(addDays(3)), done: false, liked: false, subitems: [] },
+    { id: uid(), title: '회사일 끝내기', desc: 'Submit final sprint tasks', deadline: fmt(addDays(5)), done: false, liked: false, subitems: [] },
+    { id: uid(), title: '영양제 먹기', desc: 'Daily vitamins', deadline: fmt(addDays(6)), done: false, liked: false, subitems: [] },
+    { id: uid(), title: 'SNS 사진 업로드', desc: 'Upload profile pictures', deadline: fmt(addDays(-2)), done: true, liked: false, subitems: [] },
+    { id: uid(), title: '미루기 버튼 추가', desc: 'Implement postpone arrow shortcut', deadline: fmt(addDays(-1)), done: true, liked: false, subitems: [] }
+  ];
+}
+
+// Default Configuration State
+const defaultConfigs = {
+  lang: 'en',
+  darkMode: false,
+  scale: 'medium',
+  layout: 'vertical',
+  colors: {
+    bg: '#ffffff',
+    text: '#3A3A3A',
+    icons: '#F3A3C3',
+    cards: '#ffffff',
+    tabActive: '#F5C2D9',
+    tabInactive: '#fdf5f8',
+    done: '#A0A0A0',
+    // Customizable priorities
+    prioHigh: '#e05a7a',
+    prioMedium: '#e07a3c',
+    prioLow: '#7abf7c',
+    // Customizable D-Day
+    ddayOverdue: '#e05a7a',
+    ddayToday: '#e07a3c',
+    ddaySoon: '#7abf7c',
+    ddayFuture: '#777777'
+  }
+};
+
+// Loaded State
+let tasks = [];
+let configs = {};
+let activeTab = 'today';
+let editingId = null;
+
+// Initialize Storage and Configs
+function loadAll() {
+  try {
+    const rawTasks = localStorage.getItem(STORAGE_DATA_KEY);
+    tasks = rawTasks ? JSON.parse(rawTasks) : getSampleTasks();
+  } catch {
+    tasks = getSampleTasks();
+  }
+
+  try {
+    const rawConfigs = localStorage.getItem(STORAGE_CONFIG_KEY);
+    configs = rawConfigs ? JSON.parse(rawConfigs) : JSON.parse(JSON.stringify(defaultConfigs));
+  } catch {
+    configs = JSON.parse(JSON.stringify(defaultConfigs));
+  }
+  
+  // Backfill colors inside storage config
+  if (!configs.colors) configs.colors = { ...defaultConfigs.colors };
+  if (!configs.colors.prioHigh) configs.colors.prioHigh = defaultConfigs.colors.prioHigh;
+  if (!configs.colors.prioMedium) configs.colors.prioMedium = defaultConfigs.colors.prioMedium;
+  if (!configs.colors.prioLow) configs.colors.prioLow = defaultConfigs.colors.prioLow;
+  if (!configs.colors.ddayOverdue) configs.colors.ddayOverdue = defaultConfigs.colors.ddayOverdue;
+  if (!configs.colors.ddayToday) configs.colors.ddayToday = defaultConfigs.colors.ddayToday;
+  if (!configs.colors.ddaySoon) configs.colors.ddaySoon = defaultConfigs.colors.ddaySoon;
+  if (!configs.colors.ddayFuture) configs.colors.ddayFuture = defaultConfigs.colors.ddayFuture;
+
+  applyConfigs();
+}
+
+// Persist
+function saveTasks() {
+  try { localStorage.setItem(STORAGE_DATA_KEY, JSON.stringify(tasks)); } catch {}
+}
+
+function saveConfigs() {
+  try { localStorage.setItem(STORAGE_CONFIG_KEY, JSON.stringify(configs)); } catch {}
+}
+
+// ── CUSTOM THEME STYLING LOADER ──
+function applyConfigs() {
+  const root = document.documentElement;
+
+  // Language
+  document.getElementById('lang-toggle').textContent = configs.lang === 'en' ? 'EN' : 'PT';
+  applyLanguage(configs.lang);
+
+  // Dark Mode
+  document.body.classList.toggle('dark', configs.darkMode);
+
+  // Scale size
+  const widgetRoot = document.getElementById('widget-root');
+  widgetRoot.className = ''; 
+  widgetRoot.classList.add(`scale-${configs.scale}`);
+
+  // Color picker HEX variables injection
+  const c = configs.colors;
+  root.style.setProperty('--bg-widget', c.bg);
+  root.style.setProperty('--bg-header', c.bg);
+  root.style.setProperty('--text-primary', c.text);
+  
+  root.style.setProperty('--border', c.icons);
+  root.style.setProperty('--border-input', c.icons);
+  root.style.setProperty('--border-task', c.icons);
+  root.style.setProperty('--text-brand', c.icons);
+  root.style.setProperty('--heart-empty', c.icons);
+
+  root.style.setProperty('--bg-task', c.cards);
+  root.style.setProperty('--bg-input', c.cards);
+
+  root.style.setProperty('--bg-tab-active', c.tabActive);
+  root.style.setProperty('--bg-tab', c.tabInactive);
+
+  root.style.setProperty('--text-done', c.done);
+
+  // Priorities HEX customizable
+  root.style.setProperty('--prio-high', c.prioHigh);
+  root.style.setProperty('--prio-medium', c.prioMedium);
+  root.style.setProperty('--prio-low', c.prioLow);
+
+  // D-Day HEX customizable
+  root.style.setProperty('--dday-overdue', c.ddayOverdue);
+  root.style.setProperty('--dday-today', c.ddayToday);
+  root.style.setProperty('--dday-soon', c.ddaySoon);
+  root.style.setProperty('--dday-future', c.ddayFuture);
+
+  // Sync color pickers inside the settings pane
+  document.getElementById('picker-bg').value = c.bg;
+  document.getElementById('hex-bg').value = c.bg;
+
+  document.getElementById('picker-text').value = c.text;
+  document.getElementById('hex-text').value = c.text;
+
+  document.getElementById('picker-icons').value = c.icons;
+  document.getElementById('hex-icons').value = c.icons;
+
+  document.getElementById('picker-cards').value = c.cards;
+  document.getElementById('hex-cards').value = c.cards;
+
+  document.getElementById('picker-tab-active').value = c.tabActive;
+  document.getElementById('hex-tab-active').value = c.tabActive;
+
+  document.getElementById('picker-tab-inactive').value = c.tabInactive;
+  document.getElementById('hex-tab-inactive').value = c.tabInactive;
+
+  document.getElementById('picker-done').value = c.done;
+  document.getElementById('hex-done').value = c.done;
+
+  // Sync Priority customizer pickers
+  document.getElementById('picker-prio-high').value = c.prioHigh;
+  document.getElementById('hex-prio-high').value = c.prioHigh;
+
+  document.getElementById('picker-prio-med').value = c.prioMedium;
+  document.getElementById('hex-prio-med').value = c.prioMedium;
+
+  document.getElementById('picker-prio-low').value = c.prioLow;
+  document.getElementById('hex-prio-low').value = c.prioLow;
+
+  // Sync D-Day customizer pickers
+  document.getElementById('picker-dday-overdue').value = c.ddayOverdue;
+  document.getElementById('hex-dday-overdue').value = c.ddayOverdue;
+
+  document.getElementById('picker-dday-today').value = c.ddayToday;
+  document.getElementById('hex-dday-today').value = c.ddayToday;
+
+  document.getElementById('picker-dday-soon').value = c.ddaySoon;
+  document.getElementById('hex-dday-soon').value = c.ddaySoon;
+
+  document.getElementById('picker-dday-future').value = c.ddayFuture;
+  document.getElementById('hex-dday-future').value = c.ddayFuture;
+
+  // Sync Select Dropdowns
+  document.getElementById('setting-scale').value = configs.scale;
+  document.getElementById('setting-layout').value = configs.layout;
+}
+
+// ── TRANSLATOR LOADER ──
+function applyLanguage(lang) {
+  const dictionary = i18n[lang];
+  
+  // Set content text
+  document.getElementById('label-app-title').textContent = dictionary.appTitle;
+  document.getElementById('quick-add-input').placeholder = dictionary.placeholderQuickAdd;
+  
+  document.getElementById('tab-label-today').textContent = dictionary.tabToday;
+  document.getElementById('tab-label-weekly').textContent = dictionary.tabWeekly;
+  document.getElementById('tab-label-monthly').textContent = dictionary.tabMonthly;
+  document.getElementById('tab-label-all').textContent = dictionary.tabAll;
+
+  // Modals labels
+  document.getElementById('lbl-title').textContent = dictionary.lblTitle;
+  document.getElementById('lbl-desc').textContent = dictionary.lblDesc;
+  document.getElementById('lbl-deadline').textContent = dictionary.lblDeadline;
+  document.getElementById('lbl-priority').textContent = dictionary.lblPriority;
+  document.getElementById('lbl-subitems').textContent = dictionary.lblSubitems;
+  document.getElementById('lbl-add-subitem').textContent = dictionary.lblAddSubitem;
+  document.getElementById('modal-cancel').textContent = dictionary.btnCancel;
+  document.getElementById('modal-save').textContent = dictionary.btnSave;
+
+  // Settings labels
+  document.getElementById('modal-settings-title').textContent = dictionary.lblThemeColors;
+  document.getElementById('lbl-theme-colors').textContent = dictionary.lblThemeColors;
+  document.getElementById('lbl-col-bg').textContent = dictionary.lblColBg;
+  document.getElementById('lbl-col-text').textContent = dictionary.lblColText;
+  document.getElementById('lbl-col-icons').textContent = dictionary.lblColIcons;
+  document.getElementById('lbl-col-cards').textContent = dictionary.lblColCards;
+  document.getElementById('lbl-col-tab-active').textContent = dictionary.lblColTabActive;
+  document.getElementById('lbl-col-tab-inactive').textContent = dictionary.lblColTabInactive;
+  document.getElementById('lbl-col-done').textContent = dictionary.lblColDone;
+  document.getElementById('lbl-scale').textContent = dictionary.lblScale;
+  document.getElementById('lbl-layout').textContent = dictionary.lblLayout;
+
+  document.getElementById('opt-scale-small').textContent = dictionary.optScaleSmall;
+  document.getElementById('opt-scale-medium').textContent = dictionary.optScaleMedium;
+  document.getElementById('opt-scale-large').textContent = dictionary.optScaleLarge;
+  document.getElementById('opt-lay-vert').textContent = dictionary.optLayVert;
+  document.getElementById('opt-lay-horiz').textContent = dictionary.optLayHoriz;
+
+  document.getElementById('settings-reset-defaults').textContent = dictionary.btnResetDefaults;
+  document.getElementById('settings-save-btn').textContent = dictionary.btnSaveSettings;
+  document.getElementById('lbl-priority-colors').textContent = dictionary.lblPriorityColors;
+  document.getElementById('lbl-dday-colors').textContent = dictionary.lblDdayColors;
+  document.getElementById('lbl-dday-overdue').textContent = dictionary.lblDdayOverdue;
+  document.getElementById('lbl-dday-today').textContent = dictionary.lblDdayToday;
+  document.getElementById('lbl-dday-soon').textContent = dictionary.lblDdaySoon;
+  document.getElementById('lbl-dday-future').textContent = dictionary.lblDdayFuture;
+}
+
+// ── UTILITIES & DATE CALCULATIONS ──
+const todayStr = () => new Date().toISOString().slice(0, 10);
+
+function parsePriority(title) {
+  if (title.includes('#high')) return 'high';
+  if (title.includes('#medium')) return 'medium';
+  if (title.includes('#low')) return 'low';
+  return '';
+}
+
+function cleanTitle(title) {
+  return title.replace(/#high|#medium|#low/g, '').trim();
+}
+
+function getDaysDiff(deadline) {
+  if (!deadline) return null;
+  const now = new Date(todayStr());
+  const dead = new Date(deadline);
+  const diffTime = dead - now;
+  return Math.round(diffTime / (1000 * 60 * 60 * 24));
+}
+
+// ── D-DAY INDICATOR (D-Day / D-X / D+Y) ──
+function getDDayString(deadline) {
+  if (!deadline) return '';
+  const diff = getDaysDiff(deadline);
+  
+  if (diff < 0) {
+    return `D+${Math.abs(diff)}`;
+  } else if (diff === 0) {
+    return `D-Day`;
+  } else {
+    return `D-${diff}`;
+  }
+}
+
+function getDDayClass(deadline) {
+  if (!deadline) return '';
+  const diff = getDaysDiff(deadline);
+  if (diff < 0) return 'overdue';
+  if (diff === 0) return 'today';
+  if (diff <= 7) return 'soon';
+  return 'future';
+}
+
+function formatTaskDate(deadline) {
+  if (!deadline) return '';
+  const dateParts = deadline.split('-');
+  if (dateParts.length !== 3) return deadline;
+  const [yyyy, mm, dd] = dateParts;
+  return configs.lang === 'pt' ? `${dd}/${mm}/${yyyy}` : `${mm}/${dd}/${yyyy}`;
+}
+
+// ── SORTING ALGORITHM ──
+function sortTasks(taskList) {
+  const prioMap = { 'high': 3, 'medium': 2, 'low': 1, '': 0 };
+
+  return [...taskList].sort((a, b) => {
+    if (a.done !== b.done) {
+      return a.done ? 1 : -1;
+    }
+
+    const pA = parsePriority(a.title);
+    const pB = parsePriority(b.title);
+    if (prioMap[pA] !== prioMap[pB]) {
+      return prioMap[pB] - prioMap[pA];
+    }
+
+    if (a.deadline && b.deadline) {
+      return new Date(a.deadline) - new Date(b.deadline);
+    }
+    if (a.deadline) return -1;
+    if (b.deadline) return 1;
+
+    return 0;
+  });
+}
+
+// ── TASK FILTERING BY TAB ──
+function getFilteredTasks() {
+  const today = todayStr();
+  const nextWeek = new Date();
+  nextWeek.setDate(nextWeek.getDate() + 7);
+  const nextWeekStr = nextWeek.toISOString().slice(0, 10);
+
+  const nextMonth = new Date();
+  nextMonth.setDate(nextMonth.getDate() + 30);
+  const nextMonthStr = nextMonth.toISOString().slice(0, 10);
+
+  if (activeTab === 'today') {
+    return tasks.filter(t => !t.done && (t.deadline === today || !t.deadline || getDaysDiff(t.deadline) <= 0));
+  }
+  if (activeTab === 'weekly') {
+    return tasks.filter(t => !t.done && t.deadline && t.deadline >= today && t.deadline <= nextWeekStr);
+  }
+  if (activeTab === 'monthly') {
+    return tasks.filter(t => !t.done && t.deadline && t.deadline >= today && t.deadline <= nextMonthStr);
+  }
+  return tasks; // All tab contains everything (including completed)
+}
+
+// ── RENDER ENGINE ──
+function render() {
+  const container = document.getElementById('task-list');
+  const filtered = getFilteredTasks();
+  const sorted = sortTasks(filtered);
+  const dictionary = i18n[configs.lang];
+
+  container.className = 'task-list';
+  if (configs.layout === 'horizontal') {
+    container.classList.add('layout-horizontal');
+  }
+
+  // Handle normal tabs
+  if (activeTab !== 'all') {
+    if (sorted.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+          <span>No tasks found</span>
+        </div>`;
+      return;
+    }
+    container.innerHTML = sorted.map(t => renderTaskCard(t)).join('');
+  } else {
+    // "All" tab: completed vs pending grouped separately
+    const completedList = sorted.filter(t => t.done);
+    const pendingList = sorted.filter(t => !t.done);
+
+    if (completedList.length === 0 && pendingList.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span>History empty</span>
+        </div>`;
+      return;
+    }
+
+    let html = '';
+    if (pendingList.length > 0) {
+      html += `<div class="all-section-title">${dictionary.historyPending}</div>`;
+      html += pendingList.map(t => renderTaskCard(t)).join('');
+    }
+    if (completedList.length > 0) {
+      html += `<div class="all-section-title">${dictionary.historyCompleted}</div>`;
+      html += completedList.map(t => renderTaskCard(t)).join('');
+    }
+    container.innerHTML = html;
+  }
+
+  attachEvents();
+}
+
+function renderTaskCard(t) {
+  const prio = parsePriority(t.title);
+  const displayTitle = cleanTitle(t.title);
+  const hasDesc = t.desc && t.desc.trim();
+  const hasSubs = t.subitems && t.subitems.length > 0;
+
+  // D-Day details
+  const dDayText = getDDayString(t.deadline);
+  const dDayClass = getDDayClass(t.deadline);
+  const dDayBadge = dDayText ? `<span class="d-day-badge ${dDayClass}">${dDayText}</span>` : '';
+
+  let priorityBadge = '';
+  if (prio) {
+    priorityBadge = `<span class="priority-badge p-${prio}">#${prio}</span>`;
+  }
+
+  const formattedDate = t.deadline ? `<span style="opacity:0.6; font-size:10px;">${formatTaskDate(t.deadline)}</span>` : '';
+
+  return `
+  <div class="task-card ${t.done ? 'done' : ''}" data-id="${t.id}">
+    <!-- Custom Heart Done Checkbox on the left -->
+    <div class="task-heart-checkbox ${t.done ? 'checked' : ''}" data-action="toggle-check" data-id="${t.id}" title="Toggle state">
+      ${heartSVG}
+    </div>
+
+    <!-- Main Card Body -->
+    <div class="task-main" data-action="edit-modal-trigger" data-id="${t.id}" style="cursor:pointer;">
+      <div class="task-title ${t.liked && !t.done ? 'liked' : ''}">
+        <span>${escHtml(displayTitle)}</span>
+        ${dDayBadge}
+      </div>
+      
+      ${hasDesc ? `<div class="task-desc">${escHtml(t.desc)}</div>` : ''}
+
+      <!-- Subitems Tree -->
+      ${hasSubs ? `
+        <div class="subitems-container">
+          ${t.subitems.map(s => `
+            <div class="subitem-row" data-id="${t.id}" data-subid="${s.id}">
+              <div class="subitem-check ${s.done ? 'checked' : ''}" data-action="toggle-sub" data-id="${t.id}" data-subid="${s.id}">
+                ${checkSVG}
+              </div>
+              <span class="subitem-text ${s.done ? 'done' : ''}">${escHtml(s.text)}</span>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+
+      <!-- Metadata Badges: Priority (left), Date (right) -->
+      ${(t.deadline || prio) ? `
+        <div class="task-meta">
+          ${priorityBadge}
+          ${formattedDate}
+        </div>
+      ` : ''}
+    </div>
+
+    <!-- Right Side Actions (Heart icon removed next to X) -->
+    <div class="task-actions">
+      <button class="postpone-btn" data-action="postpone-one" data-id="${t.id}" title="${i18n[configs.lang].toastPostponed}">
+        →
+      </button>
+      <button class="action-close-btn" data-action="delete-task" data-id="${t.id}" title="Delete">
+        ×
+      </button>
+    </div>
+  </div>`;
+}
+
+// ── EVENT BINDINGS & HANDLERS ──
+function attachEvents() {
+  document.querySelectorAll('[data-action]').forEach(el => {
+    el.addEventListener('click', handleAction);
+  });
+}
+
+function handleAction(e) {
+  const btn = e.currentTarget;
+  const action = btn.dataset.action;
+  const id = btn.dataset.id;
+  const subid = btn.dataset.subid;
+  e.stopPropagation();
+
+  switch (action) {
+    case 'toggle-check':
+      toggleTaskCompletion(id);
+      break;
+    case 'postpone-one':
+      postponeTask(id);
+      break;
+    case 'delete-task':
+      deleteTask(id);
+      break;
+    case 'edit-modal-trigger':
+      openEditModal(id);
+      break;
+    case 'toggle-sub':
+      toggleSubitem(id, subid);
+      break;
+  }
+}
+
+// ── CORE TASK OPERATIONS ──
+function toggleTaskCompletion(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  
+  t.done = !t.done;
+  if (t.subitems && t.subitems.length > 0) {
+    t.subitems.forEach(s => s.done = t.done);
+  }
+  
+  saveTasks();
+  render();
+}
+
+function toggleSubitem(id, subid) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  const sub = t.subitems.find(s => s.id === subid);
+  if (!sub) return;
+
+  sub.done = !sub.done;
+
+  // Auto completed trigger
+  const allCompleted = t.subitems.every(s => s.done);
+  t.done = allCompleted;
+
+  saveTasks();
+  render();
+}
+
+function postponeTask(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+
+  const current = t.deadline ? new Date(t.deadline) : new Date();
+  current.setDate(current.getDate() + 1);
+  t.deadline = current.toISOString().slice(0, 10);
+  
+  saveTasks();
+  render();
+  showToast(i18n[configs.lang].toastPostponed);
+}
+
+function deleteTask(id) {
+  tasks = tasks.filter(x => x.id !== id);
+  saveTasks();
+  render();
+  showToast(i18n[configs.lang].toastDeleted);
+}
+
+// ── QUICK ADD FIELD ──
+function quickAdd() {
+  const input = document.getElementById('quick-add-input');
+  const title = input.value.trim();
+  if (!title) return;
+
+  tasks.unshift({
+    id: uid(),
+    title: title,
+    desc: '',
+    deadline: todayStr(),
+    done: false,
+    liked: false,
+    subitems: []
+  });
+
+  input.value = '';
+  saveTasks();
+  render();
+}
+
+// ============================================================
+// ADD / EDIT TASK EDITOR MODAL
+// ============================================================
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modal-title-text').textContent = i18n[configs.lang].taskNew;
+  document.getElementById('field-title').value = '';
+  document.getElementById('field-desc').value = '';
+  document.getElementById('field-date').value = todayStr();
+  document.getElementById('field-priority').value = '';
+  renderModalSubitems([]);
+  document.getElementById('task-modal').classList.add('open');
+  document.getElementById('field-title').focus();
+}
+
+function openEditModal(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  
+  editingId = id;
+  document.getElementById('modal-title-text').textContent = i18n[configs.lang].taskEdit;
+  
+  const priority = parsePriority(t.title);
+  
+  document.getElementById('field-title').value = cleanTitle(t.title);
+  document.getElementById('field-desc').value = t.desc || '';
+  document.getElementById('field-date').value = t.deadline || '';
+  document.getElementById('field-priority').value = priority;
+
+  renderModalSubitems(t.subitems || []);
+  document.getElementById('task-modal').classList.add('open');
+  document.getElementById('field-title').focus();
+}
+
+function closeTaskModal() {
+  document.getElementById('task-modal').classList.remove('open');
+  editingId = null;
+}
+
+function renderModalSubitems(subitems) {
+  const container = document.getElementById('subitem-list-modal');
+  container.innerHTML = subitems.map((s, idx) => `
+    <div class="subitem-row-modal" data-idx="${idx}">
+      <input type="text" class="subitem-input-modal" value="${escAttr(s.text)}" placeholder="${i18n[configs.lang].placeholderSubitem}" />
+      <button class="subitem-del-modal" type="button" onclick="this.closest('.subitem-row-modal').remove()">×</button>
+    </div>
+  `).join('');
+}
+
+function getModalSubitems() {
+  return [...document.querySelectorAll('.subitem-input-modal')]
+    .map(input => input.value.trim())
+    .filter(Boolean)
+    .map(text => ({ id: uid(), text, done: false }));
+}
+
+function saveTaskModal() {
+  const cleanTitle = document.getElementById('field-title').value.trim();
+  if (!cleanTitle) return;
+
+  const desc = document.getElementById('field-desc').value.trim();
+  const deadline = document.getElementById('field-date').value;
+  const priority = document.getElementById('field-priority').value;
+
+  const title = priority ? `${cleanTitle} #${priority}` : cleanTitle;
+  const subitemsInput = getModalSubitems();
+
+  if (editingId) {
+    const t = tasks.find(x => x.id === editingId);
+    if (t) {
+      t.title = title;
+      t.desc = desc;
+      t.deadline = deadline;
+      const oldMap = Object.fromEntries((t.subitems || []).map(s => [s.text, s]));
+      t.subitems = subitemsInput.map(s => oldMap[s.text] ? { ...oldMap[s.text], text: s.text } : s);
+      
+      if (t.subitems.length > 0) {
+        t.done = t.subitems.every(s => s.done);
+      }
+    }
+  } else {
+    tasks.unshift({
+      id: uid(),
+      title,
+      desc,
+      deadline,
+      done: false,
+      liked: false,
+      subitems: subitemsInput
+    });
+  }
+
+  saveTasks();
+  closeTaskModal();
+  render();
+  showToast(i18n[configs.lang].toastSaved);
+}
+
+// ============================================================
+// SETTINGS & HEX CUSTOMIZER MODAL
+// ============================================================
+const settingsModal = document.getElementById('settings-modal');
+
+function openSettingsModal() {
+  settingsModal.classList.add('open');
+}
+
+function closeSettingsModal() {
+  settingsModal.classList.remove('open');
+}
+
+function saveSettings() {
+  configs.scale = document.getElementById('setting-scale').value;
+  configs.layout = document.getElementById('setting-layout').value;
+
+  configs.colors = {
+    bg: document.getElementById('hex-bg').value.trim(),
+    text: document.getElementById('hex-text').value.trim(),
+    icons: document.getElementById('hex-icons').value.trim(),
+    cards: document.getElementById('hex-cards').value.trim(),
+    tabActive: document.getElementById('hex-tab-active').value.trim(),
+    tabInactive: document.getElementById('hex-tab-inactive').value.trim(),
+    done: document.getElementById('hex-done').value.trim(),
+    // Priorities HEX Custom
+    prioHigh: document.getElementById('hex-prio-high').value.trim(),
+    prioMedium: document.getElementById('hex-prio-med').value.trim(),
+    prioLow: document.getElementById('hex-prio-low').value.trim(),
+    // D-Day HEX Custom
+    ddayOverdue: document.getElementById('hex-dday-overdue').value.trim(),
+    ddayToday: document.getElementById('hex-dday-today').value.trim(),
+    ddaySoon: document.getElementById('hex-dday-soon').value.trim(),
+    ddayFuture: document.getElementById('hex-dday-future').value.trim()
+  };
+
+  saveConfigs();
+  applyConfigs();
+  closeSettingsModal();
+  render();
+}
+
+function resetSettingsToDefaults() {
+  configs = JSON.parse(JSON.stringify(defaultConfigs));
+  saveConfigs();
+  applyConfigs();
+  closeSettingsModal();
+  render();
+  showToast(i18n[configs.lang].toastDefaultsReset);
+}
+
+function connectPicker(pickerId, hexId) {
+  const picker = document.getElementById(pickerId);
+  const hexInput = document.getElementById(hexId);
+
+  picker.addEventListener('input', () => {
+    hexInput.value = picker.value.toUpperCase();
+  });
+  hexInput.addEventListener('change', () => {
+    if (/^#[0-9A-F]{6}$/i.test(hexInput.value)) {
+      picker.value = hexInput.value;
+    }
+  });
+}
+
+// ============================================================
+// WIDGET GLOBAL CONTROLS
+// ============================================================
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeTab = btn.dataset.tab;
+    render();
+  });
+});
+
+document.getElementById('lang-toggle').addEventListener('click', () => {
+  configs.lang = configs.lang === 'en' ? 'pt' : 'en';
+  saveConfigs();
+  applyConfigs();
+  render();
+});
+
+document.getElementById('dark-toggle').addEventListener('click', () => {
+  configs.darkMode = !configs.darkMode;
+  saveConfigs();
+  applyConfigs();
+});
+
+document.getElementById('footer-reset-btn').addEventListener('click', () => {
+  if (confirm(i18n[configs.lang].confirmReset)) {
+    tasks = getSampleTasks();
+    saveTasks();
+    render();
+    showToast(i18n[configs.lang].toastReloaded);
+  }
+});
+
+document.getElementById('quick-add-btn').addEventListener('click', quickAdd);
+document.getElementById('quick-add-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') quickAdd();
+});
+
+document.getElementById('modal-cancel').addEventListener('click', closeTaskModal);
+document.getElementById('modal-save').addEventListener('click', saveTaskModal);
+
+document.getElementById('settings-open-btn').addEventListener('click', openSettingsModal);
+document.getElementById('settings-save-btn').addEventListener('click', saveSettings);
+document.getElementById('settings-reset-defaults').addEventListener('click', resetSettingsToDefaults);
+
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) {
+      closeTaskModal();
+      closeSettingsModal();
+    }
+  });
+});
+
+document.getElementById('add-subitem-btn').addEventListener('click', () => {
+  const container = document.getElementById('subitem-list-modal');
+  const row = document.createElement('div');
+  row.className = 'subitem-row-modal';
+  row.innerHTML = `
+    <input type="text" class="subitem-input-modal" placeholder="${i18n[configs.lang].placeholderSubitem}" />
+    <button class="subitem-del-modal" type="button">×</button>
+  `;
+  container.appendChild(row);
+  row.querySelector('input').focus();
+  row.querySelector('.subitem-del-modal').addEventListener('click', () => row.remove());
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeTaskModal();
+    closeSettingsModal();
+  }
+});
+
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+function escHtml(str) { return str ? str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : ''; }
+function escAttr(str) { return str ? str.replace(/"/g,'&quot;').replace(/'/g,'&#39;') : ''; }
+
+connectPicker('picker-bg', 'hex-bg');
+connectPicker('picker-text', 'hex-text');
+connectPicker('picker-icons', 'hex-icons');
+connectPicker('picker-cards', 'hex-cards');
+connectPicker('picker-tab-active', 'hex-tab-active');
+connectPicker('picker-tab-inactive', 'hex-tab-inactive');
+connectPicker('picker-done', 'hex-done');
+
+// Connect priority colors pickers
+connectPicker('picker-prio-high', 'hex-prio-high');
+connectPicker('picker-prio-med', 'hex-prio-med');
+connectPicker('picker-prio-low', 'hex-prio-low');
+
+// Connect D-Day colors pickers
+connectPicker('picker-dday-overdue', 'hex-dday-overdue');
+connectPicker('picker-dday-today', 'hex-dday-today');
+connectPicker('picker-dday-soon', 'hex-dday-soon');
+connectPicker('picker-dday-future', 'hex-dday-future');
+
+loadAll();
+render();
+</script>
+</body>
+</html>
