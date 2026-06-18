@@ -52,6 +52,13 @@
       --radius-sm:      6px;
       --radius-task:    8px;
       --transition:     0.2s cubic-bezier(.4,0,.2,1);
+
+      /* Widget Format/Resize customizers */
+      --widget-width:       100%;
+      --widget-max-width:   440px;
+      --widget-height:      fit-content;
+      --widget-min-height:  520px;
+      --widget-resize:      none;
     }
 
     /* ── Dark Mode overrides ── */
@@ -112,8 +119,8 @@
     #widget-root.scale-large { transform: scale(1.15); width: 87%; }
 
     .widget {
-      width: 100%;
-      max-width: 440px;
+      width: var(--widget-width, 100%);
+      max-width: var(--widget-max-width, 440px);
       display: flex;
       flex-direction: column;
       background: var(--bg-widget);
@@ -123,8 +130,44 @@
       margin: 12px auto;
       transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
       overflow: hidden;
-      height: fit-content;
-      min-height: 520px;
+      height: var(--widget-height, fit-content);
+      min-height: var(--widget-min-height, 520px);
+      resize: var(--widget-resize, none);
+      position: relative;
+    }
+
+    /* Drag indicator when manual resize is active */
+    .widget.resizable::after {
+      content: '⇲';
+      position: absolute;
+      bottom: 2px;
+      right: 4px;
+      font-size: 14px;
+      color: var(--text-brand);
+      pointer-events: none;
+      opacity: 0.8;
+      z-index: 100;
+    }
+
+    /* Full Page layout overrides */
+    html.full-window, body.full-window {
+      height: 100vh;
+      overflow: hidden;
+    }
+    #widget-root.full-window {
+      padding: 0;
+      height: 100vh;
+      width: 100vw;
+    }
+    #widget-root.full-window .widget {
+      margin: 0;
+      border-radius: 0;
+      border: none;
+      box-shadow: none;
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 100% !important;
+      max-width: none !important;
     }
 
     /* ============================================================
@@ -1016,6 +1059,15 @@
       </div>
     </div>
 
+    <div class="form-group" style="margin-top: 12px;">
+      <label class="form-label" for="setting-resize-mode" id="lbl-resize-mode">Widget Format / Sizing</label>
+      <select class="form-select" id="setting-resize-mode">
+        <option value="compact" id="opt-resize-compact">Compact (440px max-width)</option>
+        <option value="full" id="opt-resize-full">Full Page / Auto-responsive</option>
+        <option value="manual" id="opt-resize-manual">Manual (Drag to Resize both sides)</option>
+      </select>
+    </div>
+
     <div class="modal-actions">
       <button class="btn-ghost" id="settings-reset-defaults" style="font-size:11px; flex: 1;">Reset Defaults</button>
       <button class="btn-primary" id="settings-save-btn" style="flex: 1;">Save Settings</button>
@@ -1093,7 +1145,11 @@ const i18n = {
     lblDdayOverdue: "Overdue",
     lblDdayToday: "Today",
     lblDdaySoon: "Soon (<= 7 days)",
-    lblDdayFuture: "Future (> 7 days)"
+    lblDdayFuture: "Future (> 7 days)",
+    lblResizeMode: "Widget Format / Sizing",
+    optResizeCompact: "Compact (440px max-width)",
+    optResizeFull: "Full Page / Auto-responsive",
+    optResizeManual: "Manual (Drag to Resize both sides)"
   },
   pt: {
     appTitle: "lista de tarefas",
@@ -1146,7 +1202,11 @@ const i18n = {
     lblDdayOverdue: "Atrasado",
     lblDdayToday: "Hoje",
     lblDdaySoon: "Próximo (<= 7 dias)",
-    lblDdayFuture: "Futuro (> 7 dias)"
+    lblDdayFuture: "Futuro (> 7 dias)",
+    lblResizeMode: "Formato / Dimensionamento",
+    optResizeCompact: "Compacto (máx. 440px de largura)",
+    optResizeFull: "Tela Cheia / Auto-responsivo",
+    optResizeManual: "Manual (Arraste para Redimensionar)"
   }
 };
 
@@ -1178,6 +1238,9 @@ const defaultConfigs = {
   darkMode: false,
   scale: 'medium',
   layout: 'vertical',
+  resizeMode: 'compact',
+  manualWidth: '440px',
+  manualHeight: '520px',
   colors: {
     bg: '#ffffff',
     text: '#3A3A3A',
@@ -1229,6 +1292,10 @@ function loadAll() {
   if (!configs.colors.ddayToday) configs.colors.ddayToday = defaultConfigs.colors.ddayToday;
   if (!configs.colors.ddaySoon) configs.colors.ddaySoon = defaultConfigs.colors.ddaySoon;
   if (!configs.colors.ddayFuture) configs.colors.ddayFuture = defaultConfigs.colors.ddayFuture;
+
+  if (!configs.resizeMode) configs.resizeMode = 'compact';
+  if (!configs.manualWidth) configs.manualWidth = '440px';
+  if (!configs.manualHeight) configs.manualHeight = '520px';
 
   applyConfigs();
 }
@@ -1334,9 +1401,43 @@ function applyConfigs() {
   document.getElementById('picker-dday-future').value = c.ddayFuture;
   document.getElementById('hex-dday-future').value = c.ddayFuture;
 
+  // Sizing mode application
+  const isFull = configs.resizeMode === 'full';
+  document.getElementById('widget-root').classList.toggle('full-window', isFull);
+  document.body.classList.toggle('full-window', isFull);
+  document.documentElement.classList.toggle('full-window', isFull);
+
+  const widget = document.getElementById('main-widget');
+  widget.classList.toggle('resizable', configs.resizeMode === 'manual');
+
+  if (configs.resizeMode === 'manual') {
+    widget.style.width = configs.manualWidth || '440px';
+    widget.style.height = configs.manualHeight || '520px';
+    root.style.setProperty('--widget-width', configs.manualWidth || '440px');
+    root.style.setProperty('--widget-height', configs.manualHeight || '520px');
+    root.style.setProperty('--widget-max-width', 'none');
+    root.style.setProperty('--widget-resize', 'both');
+  } else if (configs.resizeMode === 'full') {
+    widget.style.width = '';
+    widget.style.height = '';
+    root.style.setProperty('--widget-width', '100%');
+    root.style.setProperty('--widget-height', '100%');
+    root.style.setProperty('--widget-max-width', 'none');
+    root.style.setProperty('--widget-resize', 'none');
+  } else {
+    // compact
+    widget.style.width = '';
+    widget.style.height = '';
+    root.style.setProperty('--widget-width', '100%');
+    root.style.setProperty('--widget-height', 'auto');
+    root.style.setProperty('--widget-max-width', '440px');
+    root.style.setProperty('--widget-resize', 'none');
+  }
+
   // Sync Select Dropdowns
   document.getElementById('setting-scale').value = configs.scale;
   document.getElementById('setting-layout').value = configs.layout;
+  document.getElementById('setting-resize-mode').value = configs.resizeMode;
 }
 
 // ── TRANSLATOR LOADER ──
@@ -1389,6 +1490,10 @@ function applyLanguage(lang) {
   document.getElementById('lbl-dday-today').textContent = dictionary.lblDdayToday;
   document.getElementById('lbl-dday-soon').textContent = dictionary.lblDdaySoon;
   document.getElementById('lbl-dday-future').textContent = dictionary.lblDdayFuture;
+  document.getElementById('lbl-resize-mode').textContent = dictionary.lblResizeMode;
+  document.getElementById('opt-resize-compact').textContent = dictionary.optResizeCompact;
+  document.getElementById('opt-resize-full').textContent = dictionary.optResizeFull;
+  document.getElementById('opt-resize-manual').textContent = dictionary.optResizeManual;
 }
 
 // ── UTILITIES & DATE CALCULATIONS ──
@@ -1831,6 +1936,7 @@ function closeSettingsModal() {
 function saveSettings() {
   configs.scale = document.getElementById('setting-scale').value;
   configs.layout = document.getElementById('setting-layout').value;
+  configs.resizeMode = document.getElementById('setting-resize-mode').value;
 
   configs.colors = {
     bg: document.getElementById('hex-bg').value.trim(),
@@ -1980,6 +2086,27 @@ connectPicker('picker-done', 'hex-done');
 connectPicker('picker-prio-high', 'hex-prio-high');
 connectPicker('picker-prio-med', 'hex-prio-med');
 connectPicker('picker-prio-low', 'hex-prio-low');
+
+// Setup Resize Observer for manual widget dragging persistence
+let resizeTimer;
+const resizeObserver = new ResizeObserver(entries => {
+  if (configs.resizeMode !== 'manual') return;
+  for (let entry of entries) {
+    const { width, height } = entry.contentRect;
+    if (width === 0 || height === 0) continue;
+    
+    // Debounce save to avoid writing to localStorage on every pixel move
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (configs.resizeMode === 'manual') {
+        configs.manualWidth = Math.round(width) + 'px';
+        configs.manualHeight = Math.round(height) + 'px';
+        saveConfigs();
+      }
+    }, 400);
+  }
+});
+resizeObserver.observe(document.getElementById('main-widget'));
 
 // Connect D-Day colors pickers
 connectPicker('picker-dday-overdue', 'hex-dday-overdue');
